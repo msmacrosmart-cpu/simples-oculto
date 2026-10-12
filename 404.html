@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Redirecionando… | Simples Oculto</title>
+    <!--
+      Página 404 com redirecionamento para SPA.
+      Usada por servidores estáticos que não fazem rewrite (ex.: GitHub Pages).
+      Na Vercel o `vercel.json` já reescreve todas as rotas para /index.html,
+      então este arquivo só entra em ação em hospedagens alternativas.
+
+      Se você publicar em uma subpasta diferente de /simples-oculto/,
+      ajuste a constante BASE abaixo.
+    -->
+    <script>
+      (function () {
+        var BASE = '/simples-oculto/';
+        try {
+          var path = location.pathname + location.search + location.hash;
+          if (path.indexOf(BASE) === 0) {
+            sessionStorage.setItem('so:redirect', path);
+          }
+        } catch (e) {}
+        location.replace(location.origin + BASE);
+      })();
+    </script>
+    <noscript>
+      <meta http-equiv="refresh" content="0; url=/simples-oculto/" />
+    </noscript>
+  </head>
+  <body style="background:#09090b;color:#a1a1aa;font-family:system-ui;padding:2rem">
+    Redirecionando para o Simples Oculto…
+  </body>
+</html>

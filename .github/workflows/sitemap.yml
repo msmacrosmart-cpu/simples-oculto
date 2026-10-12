@@ -1,0 +1,70 @@
+name: Update sitemap
+
+# Mantém o sitemap.xml em sincronia com o conteúdo publicado.
+# Não é necessário reenviar o sitemap ao Google a cada artigo — o Search
+# Console o relê periodicamente. Este workflow só garante que o arquivo
+# servido esteja sempre atualizado.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'data/articles.json'
+      - 'scripts/generate-sitemap.mjs'
+      - '.github/workflows/sitemap.yml'
+  schedule:
+    # 03:17 UTC, diariamente
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+    inputs:
+      site_url:
+        description: 'URL base (deixe vazio para usar o padrão)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  sitemap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Gerar sitemap.xml
+        env:
+          SITE_URL: ${{ github.event.inputs.site_url || 'https://simples-oculto.blog.vercel.app' }}
+        run: node scripts/generate-sitemap.mjs
+
+      - name: Validar o XML
+        run: |
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET, sys
+          t = ET.parse('sitemap.xml')
+          ns = {'s': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
+          locs = [e.text for e in t.getroot().iter('{http://www.sitemaps.org/schemas/sitemap/0.9}loc')]
+          assert locs, 'sitemap sem URLs'
+          base = 'https://simples-oculto.blog.vercel.app'
+          ruins = [u for u in locs if not u.startswith(base + '/') and u != base]
+          assert not ruins, f'URLs fora do domínio/base: {ruins[:3]}'
+          adm = [u for u in locs if '/admin' in u]
+          assert not adm, f'URLs privadas no sitemap: {adm[:3]}'
+          print(f'✔ sitemap válido com {len(locs)} URLs')
+          PY
+
+      - name: Commitar se mudou
+        run: |
+          if git diff --quiet -- sitemap.xml; then
+            echo "sitemap.xml já estava atualizado."
+          else
+            git config user.name  "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add sitemap.xml
+            git commit -m "chore(seo): atualiza sitemap.xml [skip ci]"
+            git push
+          fi

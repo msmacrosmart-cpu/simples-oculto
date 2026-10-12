@@ -1,0 +1,16 @@
+# Simples Oculto — https://simples-oculto.blog.vercel.app
+# Regras de rastreamento para robôs de busca.
+#
+# ATENÇÃO: não bloqueie o rastreamento de /images/, CSS ou JS.
+# Bloquear esses recursos impede o Google de renderizar a página e
+# entender o conteúdo deste site (que é uma aplicação em JavaScript).
+
+User-agent: *
+Allow: /
+
+# Áreas privadas ou sem valor de indexação
+Disallow: /admin
+Disallow: /pesquisa
+
+# Sitemap (URL absoluta, exigência do Google Search Console)
+Sitemap: https://simples-oculto.blog.vercel.app/sitemap.xml

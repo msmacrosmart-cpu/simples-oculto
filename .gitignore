@@ -10,3 +10,8 @@ Thumbs.db
 *.log
 .idea/
 .vscode/
+
+# Ambiente Python usado pelo scripts/generate-images.py
+.venv/
+__pycache__/
+*.pyc

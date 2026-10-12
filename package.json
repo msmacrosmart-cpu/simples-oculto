@@ -1,0 +1,23 @@
+{
+  "name": "simples-oculto",
+  "version": "1.2.0",
+  "private": true,
+  "description": "Simples Oculto — blog editorial sobre tecnologia, curiosidades, esoterismo e mistérios (SPA estática responsiva).",
+  "type": "module",
+  "scripts": {
+    "sitemap": "node scripts/generate-sitemap.mjs",
+    "check": "node scripts/check-bundle.mjs",
+    "test": "node scripts/check-bundle.mjs && node tests/css-audit.mjs && node tests/smoke.mjs",
+    "test:css": "node tests/css-audit.mjs",
+    "test:app": "node tests/smoke.mjs",
+    "build": "node scripts/check-bundle.mjs && node scripts/generate-sitemap.mjs",
+    "serve": "node scripts/serve.mjs",
+    "start": "node scripts/serve.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^30.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
