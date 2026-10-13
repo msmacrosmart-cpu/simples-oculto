@@ -293,7 +293,6 @@
               const fileData = await res.json();
               const decoded = decodeURIComponent(escape(atob(fileData.content)));
               
-              // Extrai o array JSON de dentro do arquivo TypeScript exportado
               const match = decoded.match(/\[[\s\S]*\]/);
               if (match) {
                 posts = JSON.parse(match[0]);
@@ -333,7 +332,7 @@
 
           button.disabled = true;
           status.className = 'admin-status show';
-          status.textContent = 'Gerando artigo com o Gemini...';
+          status.textContent = 'Iniciando requisição ao Gemini...';
 
           const promptText = `Você é um Senior Copywriter e SEO Specialist. Crie um artigo em português do Brasil sobre: ${title}. Palavra-chave foco: ${keyword || 'defina uma palavra-chave relevante'}. Categoria: ${category}. Conteúdo base: ${base || 'desenvolva a pauta com pesquisa e contexto editorial'}. Retorne estritamente no formato JSON puro, sem blocos de código markdown ou crases, contendo exatamente estas chaves: title (título envolvente e de alta conversão), slug (slug SEO amigável), metaTitle (máximo 60 caracteres), metaDescription (máximo 160 caracteres), content (artigo 100% original e expandido em HTML limpo usando apenas h2, h3, p, ul, li e strong), altText (ALT otimizado baseado na palavra-chave e no título).`;
 
@@ -349,6 +348,7 @@
 
           for (let i = 0; i < endpoints.length; i++) {
             try {
+              status.textContent = `Tentando conexão (tentativa ${i + 1} de ${endpoints.length})...`;
               const res = await fetch(endpoints[i], {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -367,16 +367,21 @@
           }
 
           try {
-            if (!responseData) throw new Error(`Falha na API do Gemini: ${lastErrorMsg}`);
+            if (!responseData) throw new Error(`Falha na API do Gemini: ${lastErrorMsg || 'Verifique se a chave está correta.'}`);
 
-            status.textContent = 'Processando estrutura JSON...';
+            status.textContent = 'Processando e estruturando o artigo...';
+
             let cleanJson = responseData.trim();
             const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
-            if (jsonMatch) cleanJson = jsonMatch[0];
-            else cleanJson = cleanJson.replace(/^```(json)?/i, '').replace(/```$/, '').trim();
+            if (jsonMatch) {
+              cleanJson = jsonMatch[0];
+            } else {
+              cleanJson = cleanJson.replace(/^```(json)?/i, '').replace(/```$/, '').trim();
+            }
 
+            const post = JSON.parse(cleanJson);
             const newPost = { 
-              ...JSON.parse(cleanJson), 
+              ...post, 
               coverImage, 
               category, 
               date: new Date().toLocaleDateString('pt-BR'),
@@ -408,7 +413,6 @@
 
             status.textContent = 'Enviando commit automático para o GitHub...';
 
-            // Formata o conteúdo para sobrescrever o ficheiro .ts mantendo o export correto
             const tsFileContent = `export const posts = ${JSON.stringify(posts, null, 2)};\n\nexport default posts;\n`;
             const contentBase64 = btoa(unescape(encodeURIComponent(tsFileContent)));
 
@@ -432,20 +436,26 @@
             }
 
             renderPostsList();
-            status.textContent = 'Artigo publicado no topo com sucesso! A Vercel atualizará o site em cerca de 30 segundos.';
+            status.textContent = 'Artigo gerado, formatado e publicado online com sucesso!';
             form.reset();
           } catch (error) {
-            status.textContent = error instanceof SyntaxError ? 'Erro: A IA retornou um JSON corrompido. Tente novamente.' : error.message;
+            status.textContent = error instanceof SyntaxError 
+              ? 'A IA respondeu, mas o formato JSON veio corrompido. Tente novamente.' 
+              : error.message;
           } finally {
             button.disabled = false;
           }
         };
 
         document.getElementById('copy-json').onclick = async function () {
-          if (!posts.length) return;
+          if (!posts.length) {
+            status.className = 'admin-status show';
+            status.textContent = 'Gere pelo menos um artigo antes de copiar o JSON.';
+            return;
+          }
           await navigator.clipboard.writeText(JSON.stringify(posts, null, 2));
           status.className = 'admin-status show';
-          status.textContent = 'JSON copiado!';
+          status.textContent = 'JSON dos artigos copiado para a área de transferência.';
         };
       })();
     </script>
