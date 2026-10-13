@@ -181,11 +181,11 @@
                       <div class="admin-field">
                         <label class="admin-label" for="category">Categoria</label>
                         <select id="category" class="admin-select">
-                          <option>Ocultismo</option>
+                          <option>Tecnologia e IA</option>
+                          <option>Curiosidades</option>
+                          <option>Esoterismo</option>
                           <option>Mistérios</option>
-                          <option>Tecnologia</option>
-                          <option>Negócios</option>
-                          <option>SEO</option>
+                          <option>Ocultismo</option>
                         </select>
                       </div>
                       <div class="admin-field">
@@ -213,7 +213,6 @@
             </div>
           </main>`;
 
-        // Recuperar chaves salvas
         const savedApiKey = localStorage.getItem('simples-oculto-gemini-api-key');
         if (savedApiKey) document.getElementById('api-key').value = savedApiKey;
 
@@ -246,7 +245,7 @@
           localStorage.setItem('simples-oculto-gh-path', path);
 
           status.className = 'admin-status show';
-          status.textContent = 'Configurações do GitHub salvas com sucesso!';
+          status.textContent = 'Configurações do GitHub salvas!';
         };
 
         document.getElementById('admin-logout').onclick = function () {
@@ -274,7 +273,6 @@
             </article>`).join('') : '<p class="admin-empty">Nenhum artigo publicado ainda.</p>';
         }
 
-        // Tentar carregar os posts atuais direto do GitHub ao abrir o painel
         async function fetchExistingPosts() {
           const token = localStorage.getItem('simples-oculto-gh-token');
           const owner = localStorage.getItem('simples-oculto-gh-owner');
@@ -298,7 +296,7 @@
               renderPostsList();
             }
           } catch (e) {
-            console.error('Erro ao buscar posts do GitHub:', e);
+            console.error('Erro ao buscar posts:', e);
           }
         }
 
@@ -322,14 +320,9 @@
           const repo = document.getElementById('gh-repo').value.trim();
           const path = document.getElementById('gh-path').value.trim() || 'src/data/posts.json';
 
-          if (!apiKey) {
+          if (!apiKey || !token || !owner || !repo) {
             status.className = 'admin-status show';
-            status.textContent = 'Por favor, insira a Gemini API Key.';
-            return;
-          }
-          if (!token || !owner || !repo) {
-            status.className = 'admin-status show';
-            status.textContent = 'Preencha as credenciais do GitHub para publicar online.';
+            status.textContent = 'Preencha a chave da Gemini e os dados do GitHub.';
             return;
           }
 
@@ -351,7 +344,6 @@
 
           for (let i = 0; i < endpoints.length; i++) {
             try {
-              status.textContent = `Tentando conexão com Gemini (tentativa ${i + 1})...`;
               const res = await fetch(endpoints[i], {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -378,11 +370,16 @@
             if (jsonMatch) cleanJson = jsonMatch[0];
             else cleanJson = cleanJson.replace(/^```(json)?/i, '').replace(/```$/, '').trim();
 
-            const newPost = { ...JSON.parse(cleanJson), coverImage, category, date: new Date().toLocaleDateString('pt-BR') };
+            const newPost = { 
+              ...JSON.parse(cleanJson), 
+              coverImage, 
+              category, 
+              date: new Date().toLocaleDateString('pt-BR'),
+              timestamp: Date.now() // Garante ordenação precisa
+            };
 
-            status.textContent = 'Enviando commit automático para o GitHub...';
+            status.textContent = 'Enviando commit automático para o GitHub (forçando no topo)...';
 
-            // 1. Obter arquivo atual do repositório para capturar o SHA
             const fileUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
             const fileRes = await fetch(fileUrl, {
               headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' }
@@ -398,10 +395,10 @@
               } catch (e) { existingPosts = []; }
             }
 
+            // Insere obrigatoriamente na primeira posição (topo)
             existingPosts.unshift(newPost);
             posts = existingPosts;
 
-            // 2. Fazer o PUT com o commit atualizado
             const contentBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(posts, null, 2))));
             const commitRes = await fetch(fileUrl, {
               method: 'PUT',
@@ -411,7 +408,7 @@
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({
-                message: `CMS: Publicar post "${newPost.title}"`,
+                message: `CMS: Publicar novo artigo em primeiro "${newPost.title}"`,
                 content: contentBase64,
                 sha: fileSha
               })
@@ -423,7 +420,7 @@
             }
 
             renderPostsList();
-            status.textContent = 'Artigo publicado online com sucesso! A Vercel atualizará o site em instantes.';
+            status.textContent = 'Artigo publicado no topo com sucesso! A Vercel atualizará o site em cerca de 30 segundos.';
             form.reset();
           } catch (error) {
             status.textContent = error instanceof SyntaxError ? 'Erro: A IA retornou um JSON corrompido. Tente novamente.' : error.message;
@@ -436,7 +433,7 @@
           if (!posts.length) return;
           await navigator.clipboard.writeText(JSON.stringify(posts, null, 2));
           status.className = 'admin-status show';
-          status.textContent = 'JSON copiado para a área de transferência.';
+          status.textContent = 'JSON copiado!';
         };
       })();
     </script>
