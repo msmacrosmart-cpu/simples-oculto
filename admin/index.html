@@ -156,8 +156,8 @@
                       </div>
                     </div>
                     <div class="admin-field">
-                      <label class="admin-label" for="gh-path">Caminho do Arquivo JSON no Repo</label>
-                      <input id="gh-path" class="admin-input" placeholder="Ex: src/data/posts.json ou public/posts.json" value="src/data/posts.json">
+                      <label class="admin-label" for="gh-path">Caminho do Arquivo de Dados no Repo</label>
+                      <input id="gh-path" class="admin-input" placeholder="Ex: db/original-content.ts" value="db/original-content.ts">
                       <div style="display:flex;justify-content:flex-end;margin-top:.5rem">
                         <button class="admin-copy" type="button" id="save-gh">Salvar Configs GitHub</button>
                       </div>
@@ -277,7 +277,7 @@
           const token = localStorage.getItem('simples-oculto-gh-token');
           const owner = localStorage.getItem('simples-oculto-gh-owner');
           const repo = localStorage.getItem('simples-oculto-gh-repo');
-          const path = localStorage.getItem('simples-oculto-gh-path') || 'src/data/posts.json';
+          const path = localStorage.getItem('simples-oculto-gh-path') || 'db/original-content.ts';
 
           if (!token || !owner || !repo) {
             document.getElementById('post-count').textContent = 'Configure o GitHub para sincronizar';
@@ -292,8 +292,13 @@
             if (res.ok) {
               const fileData = await res.json();
               const decoded = decodeURIComponent(escape(atob(fileData.content)));
-              posts = JSON.parse(decoded);
-              renderPostsList();
+              
+              // Extrai o array JSON de dentro do arquivo TypeScript exportado
+              const match = decoded.match(/\[[\s\S]*\]/);
+              if (match) {
+                posts = JSON.parse(match[0]);
+                renderPostsList();
+              }
             }
           } catch (e) {
             console.error('Erro ao buscar posts:', e);
@@ -318,7 +323,7 @@
           const token = document.getElementById('gh-token').value.trim();
           const owner = document.getElementById('gh-owner').value.trim();
           const repo = document.getElementById('gh-repo').value.trim();
-          const path = document.getElementById('gh-path').value.trim() || 'src/data/posts.json';
+          const path = document.getElementById('gh-path').value.trim() || 'db/original-content.ts';
 
           if (!apiKey || !token || !owner || !repo) {
             status.className = 'admin-status show';
@@ -375,10 +380,10 @@
               coverImage, 
               category, 
               date: new Date().toLocaleDateString('pt-BR'),
-              timestamp: Date.now() // Garante ordenação precisa
+              timestamp: Date.now()
             };
 
-            status.textContent = 'Enviando commit automático para o GitHub (forçando no topo)...';
+            status.textContent = 'Lendo ficheiro atual do repositório...';
 
             const fileUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
             const fileRes = await fetch(fileUrl, {
@@ -391,15 +396,22 @@
               const fileData = await fileRes.json();
               fileSha = fileData.sha;
               try {
-                existingPosts = JSON.parse(decodeURIComponent(escape(atob(fileData.content))));
+                const decoded = decodeURIComponent(escape(atob(fileData.content)));
+                const match = decoded.match(/\[[\s\S]*\]/);
+                if (match) existingPosts = JSON.parse(match[0]);
               } catch (e) { existingPosts = []; }
             }
 
-            // Insere obrigatoriamente na primeira posição (topo)
+            // Insere o novo artigo rigorosamente na primeira posição
             existingPosts.unshift(newPost);
             posts = existingPosts;
 
-            const contentBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(posts, null, 2))));
+            status.textContent = 'Enviando commit automático para o GitHub...';
+
+            // Formata o conteúdo para sobrescrever o ficheiro .ts mantendo o export correto
+            const tsFileContent = `export const posts = ${JSON.stringify(posts, null, 2)};\n\nexport default posts;\n`;
+            const contentBase64 = btoa(unescape(encodeURIComponent(tsFileContent)));
+
             const commitRes = await fetch(fileUrl, {
               method: 'PUT',
               headers: {
@@ -408,7 +420,7 @@
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({
-                message: `CMS: Publicar novo artigo em primeiro "${newPost.title}"`,
+                message: `CMS: Publicar novo artigo no topo "${newPost.title}"`,
                 content: contentBase64,
                 sha: fileSha
               })
