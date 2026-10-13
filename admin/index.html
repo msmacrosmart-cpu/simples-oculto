@@ -55,6 +55,7 @@
       .admin-detail { color: #a1a1aa; font-size: .74rem; line-height: 1.45; margin: .35rem 0; }
       .admin-detail strong { color: #d4d4d8; }
       .admin-html { border-left: 2px solid #7c3aed; padding: .45rem .7rem; margin-top: .7rem; max-height: 112px; overflow: auto; color: #a1a1aa; font-size: .75rem; background: #18181b; border-radius: 0 .4rem .4rem 0; }
+      .admin-divider { border-top: 1px solid #27272a; margin: 1.25rem 0; }
       @media (max-width: 820px) { .admin-grid { grid-template-columns: 1fr; } .admin-top { flex-direction: column; } }
     </style>
   </head>
@@ -66,7 +67,6 @@
         const root = document.getElementById('admin-root');
         const esc = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
 
-        // Verificação de autenticação do Admin
         if (sessionStorage.getItem('simples-oculto-admin-auth') !== 'true') {
           root.innerHTML = `
             <main class="admin-login-shell">
@@ -105,6 +105,7 @@
         }
 
         let posts = [];
+
         root.innerHTML = `
           <main class="admin-shell">
             <div class="admin-wrap">
@@ -123,7 +124,7 @@
                 <section class="admin-card">
                   <div class="admin-card-head">
                     <h2>Novo artigo com IA</h2>
-                    <span class="admin-eyebrow">Gemini</span>
+                    <span class="admin-eyebrow">Gemini & GitHub</span>
                   </div>
                   <form id="admin-form">
                     <div class="admin-field">
@@ -133,10 +134,37 @@
                         <button class="admin-eye" type="button" id="toggle-key" aria-label="Mostrar chave">◉</button>
                       </div>
                       <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-top:.5rem">
-                        <div class="admin-hint" style="margin-top:0">A chave fica salva apenas neste navegador.</div>
+                        <div class="admin-hint" style="margin-top:0">Salva apenas neste navegador.</div>
                         <button class="admin-copy" type="button" id="save-key">Salvar chave</button>
                       </div>
                     </div>
+
+                    <div class="admin-divider"></div>
+
+                    <div class="admin-field">
+                      <label class="admin-label" for="gh-token">GitHub Personal Access Token</label>
+                      <input id="gh-token" class="admin-input" type="password" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off">
+                    </div>
+                    <div class="admin-two">
+                      <div class="admin-field">
+                        <label class="admin-label" for="gh-owner">Usuário / Organização</label>
+                        <input id="gh-owner" class="admin-input" placeholder="Ex: seu-usuario">
+                      </div>
+                      <div class="admin-field">
+                        <label class="admin-label" for="gh-repo">Nome do Repositório</label>
+                        <input id="gh-repo" class="admin-input" placeholder="Ex: simples-oculto">
+                      </div>
+                    </div>
+                    <div class="admin-field">
+                      <label class="admin-label" for="gh-path">Caminho do Arquivo JSON no Repo</label>
+                      <input id="gh-path" class="admin-input" placeholder="Ex: src/data/posts.json ou public/posts.json" value="src/data/posts.json">
+                      <div style="display:flex;justify-content:flex-end;margin-top:.5rem">
+                        <button class="admin-copy" type="button" id="save-gh">Salvar Configs GitHub</button>
+                      </div>
+                    </div>
+
+                    <div class="admin-divider"></div>
+
                     <div class="admin-field">
                       <label class="admin-label" for="raw-title">Título Bruto / Ideia Principal</label>
                       <input id="raw-title" class="admin-input" placeholder="Ex.: Como interpretar sonhos recorrentes" required>
@@ -165,43 +193,60 @@
                         <input id="keyword" class="admin-input" placeholder="Ex.: significado dos sonhos">
                       </div>
                     </div>
-                    <button class="admin-button" type="submit" id="generate"><span>✦</span> Gerar e Publicar Artigo com IA</button>
+                    <button class="admin-button" type="submit" id="generate"><span>✦</span> Gerar e Publicar Artigo Online</button>
                     <div class="admin-status" id="status" role="status" aria-live="polite"></div>
                   </form>
                 </section>
                 <section class="admin-card">
                   <div class="admin-card-head">
                     <div>
-                      <h2>Artigos gerados</h2>
-                      <p class="admin-subtitle" id="post-count">Nenhum artigo nesta sessão</p>
+                      <h2>Artigos publicados</h2>
+                      <p class="admin-subtitle" id="post-count">Carregando...</p>
                     </div>
-                    <button class="admin-copy" id="copy-json" type="button">Copiar JSON dos Artigos</button>
+                    <button class="admin-copy" id="copy-json" type="button">Copiar JSON</button>
                   </div>
                   <div class="admin-posts" id="posts">
-                    <p class="admin-empty">Os artigos gerados aparecerão aqui com seus dados de SEO e uma prévia do HTML.</p>
+                    <p class="admin-empty">Os artigos gerados aparecerão aqui.</p>
                   </div>
                 </section>
               </div>
             </div>
           </main>`;
 
-        const form = document.getElementById('admin-form');
-        const status = document.getElementById('status');
-        const button = document.getElementById('generate');
+        // Recuperar chaves salvas
         const savedApiKey = localStorage.getItem('simples-oculto-gemini-api-key');
-        
         if (savedApiKey) document.getElementById('api-key').value = savedApiKey;
+
+        const savedGhToken = localStorage.getItem('simples-oculto-gh-token');
+        if (savedGhToken) document.getElementById('gh-token').value = savedGhToken;
+        const savedGhOwner = localStorage.getItem('simples-oculto-gh-owner');
+        if (savedGhOwner) document.getElementById('gh-owner').value = savedGhOwner;
+        const savedGhRepo = localStorage.getItem('simples-oculto-gh-repo');
+        if (savedGhRepo) document.getElementById('gh-repo').value = savedGhRepo;
+        const savedGhPath = localStorage.getItem('simples-oculto-gh-path');
+        if (savedGhPath) document.getElementById('gh-path').value = savedGhPath;
 
         document.getElementById('save-key').onclick = function () {
           const apiKey = document.getElementById('api-key').value.trim();
-          if (!apiKey) {
-            status.className = 'admin-status show';
-            status.textContent = 'Cole uma chave da Gemini antes de salvar.';
-            return;
-          }
+          if (!apiKey) return;
           localStorage.setItem('simples-oculto-gemini-api-key', apiKey);
           status.className = 'admin-status show';
-          status.textContent = 'Chave da Gemini salva neste navegador.';
+          status.textContent = 'Chave da Gemini salva!';
+        };
+
+        document.getElementById('save-gh').onclick = function () {
+          const token = document.getElementById('gh-token').value.trim();
+          const owner = document.getElementById('gh-owner').value.trim();
+          const repo = document.getElementById('gh-repo').value.trim();
+          const path = document.getElementById('gh-path').value.trim();
+
+          localStorage.setItem('simples-oculto-gh-token', token);
+          localStorage.setItem('simples-oculto-gh-owner', owner);
+          localStorage.setItem('simples-oculto-gh-repo', repo);
+          localStorage.setItem('simples-oculto-gh-path', path);
+
+          status.className = 'admin-status show';
+          status.textContent = 'Configurações do GitHub salvas com sucesso!';
         };
 
         document.getElementById('admin-logout').onclick = function () {
@@ -212,11 +257,10 @@
         document.getElementById('toggle-key').onclick = function () {
           const input = document.getElementById('api-key');
           input.type = input.type === 'password' ? 'text' : 'password';
-          this.setAttribute('aria-label', input.type === 'password' ? 'Mostrar chave' : 'Ocultar chave');
         };
 
-        function renderPosts() {
-          document.getElementById('post-count').textContent = posts.length ? posts.length + (posts.length === 1 ? ' artigo publicado nesta sessão' : ' artigos publicados nesta sessão') : 'Nenhum artigo nesta sessão';
+        function renderPostsList() {
+          document.getElementById('post-count').textContent = posts.length ? `${posts.length} artigo(s) no repositório` : 'Nenhum artigo encontrado';
           document.getElementById('posts').innerHTML = posts.length ? posts.map((post) => `
             <article class="admin-post">
               <h3 class="admin-post-title">${esc(post.title)}</h3>
@@ -226,12 +270,44 @@
               </div>
               <p class="admin-detail"><strong>Meta Title:</strong> ${esc(post.metaTitle)}</p>
               <p class="admin-detail"><strong>Meta Description:</strong> ${esc(post.metaDescription)}</p>
-              <p class="admin-detail"><strong>ALT:</strong> ${esc(post.altText)}</p>
               <div class="admin-html">${esc(post.content)}</div>
-            </article>`).join('') : '<p class="admin-empty">Os artigos gerados aparecerão aqui com seus dados de SEO e uma prévia do HTML.</p>';
+            </article>`).join('') : '<p class="admin-empty">Nenhum artigo publicado ainda.</p>';
         }
 
-        // Lógica de requisição à API do Gemini com múltiplos endpoints de fallback
+        // Tentar carregar os posts atuais direto do GitHub ao abrir o painel
+        async function fetchExistingPosts() {
+          const token = localStorage.getItem('simples-oculto-gh-token');
+          const owner = localStorage.getItem('simples-oculto-gh-owner');
+          const repo = localStorage.getItem('simples-oculto-gh-repo');
+          const path = localStorage.getItem('simples-oculto-gh-path') || 'src/data/posts.json';
+
+          if (!token || !owner || !repo) {
+            document.getElementById('post-count').textContent = 'Configure o GitHub para sincronizar';
+            return;
+          }
+
+          try {
+            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+            const res = await fetch(url, {
+              headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' }
+            });
+            if (res.ok) {
+              const fileData = await res.json();
+              const decoded = decodeURIComponent(escape(atob(fileData.content)));
+              posts = JSON.parse(decoded);
+              renderPostsList();
+            }
+          } catch (e) {
+            console.error('Erro ao buscar posts do GitHub:', e);
+          }
+        }
+
+        fetchExistingPosts();
+
+        const form = document.getElementById('admin-form');
+        const status = document.getElementById('status');
+        const button = document.getElementById('generate');
+
         form.onsubmit = async function (event) {
           event.preventDefault();
           const apiKey = document.getElementById('api-key').value.trim();
@@ -241,15 +317,25 @@
           const category = document.getElementById('category').value;
           const keyword = document.getElementById('keyword').value.trim();
 
+          const token = document.getElementById('gh-token').value.trim();
+          const owner = document.getElementById('gh-owner').value.trim();
+          const repo = document.getElementById('gh-repo').value.trim();
+          const path = document.getElementById('gh-path').value.trim() || 'src/data/posts.json';
+
           if (!apiKey) {
             status.className = 'admin-status show';
             status.textContent = 'Por favor, insira a Gemini API Key.';
             return;
           }
+          if (!token || !owner || !repo) {
+            status.className = 'admin-status show';
+            status.textContent = 'Preencha as credenciais do GitHub para publicar online.';
+            return;
+          }
 
           button.disabled = true;
           status.className = 'admin-status show';
-          status.textContent = 'Iniciando requisição ao Gemini...';
+          status.textContent = 'Gerando artigo com o Gemini...';
 
           const promptText = `Você é um Senior Copywriter e SEO Specialist. Crie um artigo em português do Brasil sobre: ${title}. Palavra-chave foco: ${keyword || 'defina uma palavra-chave relevante'}. Categoria: ${category}. Conteúdo base: ${base || 'desenvolva a pauta com pesquisa e contexto editorial'}. Retorne estritamente no formato JSON puro, sem blocos de código markdown ou crases, contendo exatamente estas chaves: title (título envolvente e de alta conversão), slug (slug SEO amigável), metaTitle (máximo 60 caracteres), metaDescription (máximo 160 caracteres), content (artigo 100% original e expandido em HTML limpo usando apenas h2, h3, p, ul, li e strong), altText (ALT otimizado baseado na palavra-chave e no título).`;
 
@@ -265,17 +351,12 @@
 
           for (let i = 0; i < endpoints.length; i++) {
             try {
-              status.textContent = `Tentando conexão (tentativa ${i + 1} de ${endpoints.length})...`;
+              status.textContent = `Tentando conexão com Gemini (tentativa ${i + 1})...`;
               const res = await fetch(endpoints[i], {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  contents: [{
-                    parts: [{ text: promptText }]
-                  }]
-                })
+                body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
               });
-
               const json = await res.json();
               if (res.ok && json.candidates && json.candidates[0]?.content?.parts?.[0]?.text) {
                 responseData = json.candidates[0].content.parts[0].text;
@@ -289,42 +370,73 @@
           }
 
           try {
-            if (!responseData) {
-              throw new Error(`Falha na API do Gemini: ${lastErrorMsg || 'Verifique se a chave está correta.'}`);
+            if (!responseData) throw new Error(`Falha na API do Gemini: ${lastErrorMsg}`);
+
+            status.textContent = 'Processando estrutura JSON...';
+            let cleanJson = responseData.trim();
+            const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
+            if (jsonMatch) cleanJson = jsonMatch[0];
+            else cleanJson = cleanJson.replace(/^```(json)?/i, '').replace(/```$/, '').trim();
+
+            const newPost = { ...JSON.parse(cleanJson), coverImage, category, date: new Date().toLocaleDateString('pt-BR') };
+
+            status.textContent = 'Enviando commit automático para o GitHub...';
+
+            // 1. Obter arquivo atual do repositório para capturar o SHA
+            const fileUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+            const fileRes = await fetch(fileUrl, {
+              headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' }
+            });
+
+            let fileSha = null;
+            let existingPosts = [];
+            if (fileRes.ok) {
+              const fileData = await fileRes.json();
+              fileSha = fileData.sha;
+              try {
+                existingPosts = JSON.parse(decodeURIComponent(escape(atob(fileData.content))));
+              } catch (e) { existingPosts = []; }
             }
 
-            status.textContent = 'Processando e estruturando o artigo...';
+            existingPosts.unshift(newPost);
+            posts = existingPosts;
 
-            let cleanJson = responseData.trim();
-            if (cleanJson.startsWith('```json')) cleanJson = cleanJson.replace(/^```json/, '');
-            if (cleanJson.startsWith('```')) cleanJson = cleanJson.replace(/^```/, '');
-            if (cleanJson.endsWith('```')) cleanJson = cleanJson.replace(/```$/, '');
-            cleanJson = cleanJson.trim();
+            // 2. Fazer o PUT com o commit atualizado
+            const contentBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(posts, null, 2))));
+            const commitRes = await fetch(fileUrl, {
+              method: 'PUT',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/vnd.github+json',
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                message: `CMS: Publicar post "${newPost.title}"`,
+                content: contentBase64,
+                sha: fileSha
+              })
+            });
 
-            const post = JSON.parse(cleanJson);
-            posts.unshift({ ...post, coverImage, category });
-            renderPosts();
+            if (!commitRes.ok) {
+              const errData = await commitRes.json();
+              throw new Error(`Erro no GitHub: ${errData.message || commitRes.statusText}`);
+            }
 
-            status.textContent = 'Artigo gerado, formatado e publicado com sucesso!';
+            renderPostsList();
+            status.textContent = 'Artigo publicado online com sucesso! A Vercel atualizará o site em instantes.';
             form.reset();
           } catch (error) {
-            status.textContent = error instanceof SyntaxError 
-              ? 'A IA respondeu, mas o formato JSON veio corrompido. Tente novamente.' 
-              : error.message;
+            status.textContent = error instanceof SyntaxError ? 'Erro: A IA retornou um JSON corrompido. Tente novamente.' : error.message;
           } finally {
             button.disabled = false;
           }
         };
 
         document.getElementById('copy-json').onclick = async function () {
-          if (!posts.length) {
-            status.className = 'admin-status show';
-            status.textContent = 'Gere pelo menos um artigo antes de copiar o JSON.';
-            return;
-          }
+          if (!posts.length) return;
           await navigator.clipboard.writeText(JSON.stringify(posts, null, 2));
           status.className = 'admin-status show';
-          status.textContent = 'JSON dos artigos copiado para a área de transferência.';
+          status.textContent = 'JSON copiado para a área de transferência.';
         };
       })();
     </script>
